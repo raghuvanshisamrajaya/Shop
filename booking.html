@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Book Appointment</title>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+    import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+    // Firebase config
+    const firebaseConfig = {
+      apiKey: "AIzaSyAbknkfD6Je1a3wDZRTzn6lC62CNUhhwLc",
+      authDomain: "store-471f1.firebaseapp.com",
+      projectId: "store-471f1",
+      storageBucket: "store-471f1.appspot.com",
+      messagingSenderId: "619523242611",
+      appId: "1:619523242611:web:fdfa53044c62f844574806",
+      measurementId: "G-16C8MYT70G"
+    };
+
+    // Init Firebase
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    const form = document.getElementById("bookingForm");
+    const message = document.getElementById("message");
+
+    let currentUser = null;
+
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        currentUser = user;
+      } else {
+        window.location.href = "/login.html"; // redirect if not logged in
+      }
+    });
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      if (!currentUser) {
+        message.innerText = "Please log in first.";
+        return;
+      }
+
+      const serviceName = document.getElementById("serviceName").value;
+      const date = document.getElementById("date").value;
+      const doctorId = document.getElementById("doctorId").value;
+
+      try {
+        const bookingRef = await addDoc(collection(db, "bookings"), {
+          userId: currentUser.uid,
+          doctorId,
+          service: serviceName,
+          date,
+          status: "pending",
+          createdAt: serverTimestamp(),
+        });
+
+        message.innerText = "Booking successful! ID: " + bookingRef.id;
+        form.reset();
+      } catch (error) {
+        console.error("Booking Error:", error);
+        message.innerText = "Failed to book. Please try again.";
+      }
+    });
+  </script>
+</head>
+<body>
+  <div class="container">
+    <h2>Book an Appointment</h2>
+    <form id="bookingForm">
+      <input type="text" id="serviceName" placeholder="Service Name" required />
+      <input type="date" id="date" required />
+      <input type="text" id="doctorId" placeholder="Doctor ID" required />
+      <button type="submit">Book Now</button>
+    </form>
+    <div id="message"></div>
+  </div>
+</body>
+</html>
