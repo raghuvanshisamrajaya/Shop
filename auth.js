@@ -10,22 +10,28 @@ import {
 import {
   doc,
   setDoc,
-  getDoc
+  getDoc,
+  collection,
+  addDoc,
+  getDocs,
+  updateDoc,
+  query,
+  where,
+  Timestamp
 } from 'firebase/firestore';
 
-// ✅ Signup function
+// ✅ Signup function (creates auth + user doc)
 export async function signUpUser(name, email, password) {
   try {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const uid = userCredential.user.uid;
 
-    // ✅ Create user document in Firestore
     await setDoc(doc(db, "users", uid), {
       uid: uid,
       name: name,
       email: email,
-      role: "user",        // default role
-      createdAt: new Date()
+      role: "user",
+      createdAt: Timestamp.now()
     });
 
     return { success: true, uid };
@@ -44,7 +50,7 @@ export async function loginUser(email, password) {
   }
 }
 
-// ✅ Logout function
+// ✅ Logout
 export async function logoutUser() {
   try {
     await signOut(auth);
@@ -54,7 +60,7 @@ export async function logoutUser() {
   }
 }
 
-// ✅ Get current user data from Firestore
+// ✅ Get current user data
 export async function getCurrentUserData() {
   return new Promise((resolve, reject) => {
     onAuthStateChanged(auth, async (user) => {
@@ -70,4 +76,83 @@ export async function getCurrentUserData() {
       }
     });
   });
+}
+
+// ✅ Book a service
+export async function createBooking({ userId, doctorId, serviceName, date, status = "pending" }) {
+  try {
+    await addDoc(collection(db, "bookings"), {
+      userId,
+      doctorId,
+      serviceName,
+      date: Timestamp.fromDate(new Date(date)),
+      status,
+      createdAt: Timestamp.now()
+    });
+    return { success: true };
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
+}
+
+// ✅ View user bookings
+export async function getUserBookings(userId) {
+  try {
+    const q = query(collection(db, "bookings"), where("userId", "==", userId));
+    const snapshot = await getDocs(q);
+    const bookings = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    return { success: true, bookings };
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
+}
+
+// ✅ Update or cancel booking by user
+export async function updateBookingStatus(bookingId, newStatus) {
+  try {
+    const ref = doc(db, "bookings", bookingId);
+    await updateDoc(ref, { status: newStatus });
+    return { success: true };
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
+}
+
+// ✅ Admin fetch all bookings
+export async function getAllBookings() {
+  try {
+    const snapshot = await getDocs(collection(db, "bookings"));
+    const bookings = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    return { success: true, bookings };
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
+}
+
+// ✅ Doctor verify booking
+export async function verifyBooking(bookingId) {
+  try {
+    const ref = doc(db, "bookings", bookingId);
+    await updateDoc(ref, { status: "confirmed" });
+    return { success: true };
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
+}
+
+// ✅ Add product (merchant)
+export async function addProduct({ merchantId, name, description, price, status = "draft" }) {
+  try {
+    await addDoc(collection(db, "products"), {
+      merchantId,
+      name,
+      description,
+      price,
+      status,
+      createdAt: Timestamp.now()
+    });
+    return { success: true };
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
 }
